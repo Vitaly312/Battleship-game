@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BattleshipGame.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="BattleshipGame.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="BattleshipGame">
+    <Window.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:Cell}">
+            <Button Content="{Binding CellText}"></Button>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+    
+    <!-- <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/> -->
+    <Grid ColumnDefinitions="Auto, *" Margin="10 0 10 0">
+        <ItemsControl ItemsSource="{Binding Cells}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="10" Columns="10" ColumnSpacing="0" RowSpacing="0"
+                                 VerticalAlignment="Center" HorizontalAlignment="Left" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:Cell}">
+                    <Button Width="40" Height="40"
+                            FontSize="20" HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Content="{Binding CellText}"
+                            Command="{Binding Fire}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Grid.Column="1" >
+            <TextBlock Text="{Binding TurnMessage}"
+                     VerticalAlignment="Top" HorizontalAlignment="Center"
+                     FontSize="20"/>
+            <StackPanel 
+                IsVisible="{Binding IsUserSelectorsVisible}"
+                HorizontalAlignment="Center" Margin="0 30 0 0">
+                
+                <RadioButton GroupName="Fire status"
+                             IsChecked="{Binding IsMiss}"
+                             Content="Промах"/>
+                <RadioButton GroupName="Fire status"
+                             IsChecked="{Binding IsHit}"
+                             Content="Ранен"/>
+                <RadioButton GroupName="Fire status"
+                             IsChecked="{Binding IsSunk}"
+                             Content="Убит"/>
+                <Button
+                    Content="Отправить"
+                    Command="{Binding SendUserAction}"
+                    Margin="0 20 0 0"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>
