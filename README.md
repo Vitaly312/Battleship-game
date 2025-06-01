@@ -7,7 +7,7 @@
 компьютера по своим кораблям.
 
 ## 🎮 Демонстрация
-![PREVIEW](https://ibb.co/KpmpSYzs)
+<image src="https://i.ibb.co/C3W3Dqs9/bg-preview.gif" alt="preview">
 
 ## ✨ Особенности
 
