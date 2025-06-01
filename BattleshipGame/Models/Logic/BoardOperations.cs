@@ -4,14 +4,13 @@ namespace BattleshipGame.Models.Logic;
 
 public class BoardOperations
 {
-    public static bool CanLocate(PointStatus[,] field, (int x, int y)[] shipPoints,
+    public static bool CanLocate(BattleShipField field, (int x, int y)[] shipPoints,
         bool isPlacementCheck = false)
     {
         foreach ((int x, int y) point in shipPoints)
         {
-            if (point.x < 0 || point.x > 9 || point.y < 0 || point.y > 9) return false;
-            if (field[point.x, point.y] == PointStatus.Miss
-                || field[point.x, point.y] == PointStatus.Hit) return false;
+            if (!GameUtils.IsInBounds(point.x, point.y)) return false;
+            if (!field.IsCellShootable(point)) return false;
             if (isPlacementCheck)
             {
                 var neighbors = new (int x, int y)[]
@@ -23,9 +22,9 @@ public class BoardOperations
                 };
                 foreach (var neighbor in neighbors)
                 {
-                    if (neighbor.x >= 0 && neighbor.x < 10 && neighbor.y >= 0 && neighbor.y < 10)
+                    if (GameUtils.IsInBounds(neighbor.x, neighbor.y))
                     {
-                        if (field[neighbor.x, neighbor.y] == PointStatus.Ship) return false;
+                        if (field.Field[neighbor.x, neighbor.y] == PointStatus.Ship) return false;
                     }
                 }
             }
@@ -62,7 +61,7 @@ public class BoardOperations
                 int y = Random.Shared.Next(0, 10);
                 Direction direction = (Direction)Random.Shared.Next(0, 2);
                 var points = GetShipPoints(direction, x, y, shipLen: shipSize);
-                if (CanLocate(field.Field, points, true))
+                if (CanLocate(field, points, true))
                 {
                     foreach (var point in points)
                     {

@@ -20,8 +20,9 @@ public class Cell: ReactiveObject
         }
 
     }
-    public int X;
-    public int Y;
+
+    public int X { get; }
+    public int Y { get; }
 
     public string CellText =>
         _state switch

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ReactiveUI;
 using BattleshipGame.Models;
+
 namespace BattleshipGame.ViewModels;
 
 public class MainWindowViewModel: ViewModelBase
@@ -23,10 +25,24 @@ public class MainWindowViewModel: ViewModelBase
             }
         }
     }
+    
 
     private string _computerLastMove = String.Empty;
+    private PlayerShotResult.GameMembers? _winner;
+    private readonly Dictionary<(int x, int y), Cell> _cellsDictionary;
+    
+    public string TurnMessage
+    {
+        get
+        {
+            if (_winner == null)
+            {
+                return IsPlayerTurn ? "Ход игрока" : $"Ход компьютера: {_computerLastMove}";
+            }
+            return _winner == PlayerShotResult.GameMembers.Player ? "Вы выиграли": "Выиграл компьютер";
+        }
+    }
 
-    public string TurnMessage => IsPlayerTurn ? "Ход игрока" : $"Ход компьютера: {_computerLastMove}";
     private readonly GameStrategy _gameStrategy;
     public bool IsMiss { get; set; } = true;
     public bool IsSunk { get; set; }
@@ -35,51 +51,51 @@ public class MainWindowViewModel: ViewModelBase
     private void DoComputerShot()
     {
         (int x, int y) = _gameStrategy.GetShotCoordinates();
-        _computerLastMove = (char)(1040 + x) + y.ToString();
+        _computerLastMove = (char)(1040 + (y == 9 ? 10 : y)) + (x+1).ToString();
+        this.RaisePropertyChanged(nameof(TurnMessage));
     }
 
     public MainWindowViewModel()
     {
         var cells = new ObservableCollection<Cell>();
+        _cellsDictionary = new Dictionary<(int x, int y), Cell>();
         for(int i=0;i<10;i++)
         for(int j=0;j<10;j++)
         {
-            cells.Add(new Cell(x: i, y: j) { FireCommand = FireCommand});
+            var cell = new Cell(x: i, y: j) { FireCommand = FireCommand };
+            cells.Add(cell);
+            _cellsDictionary[(i, j)] = cell;
         }
-        
         Cells = cells;
         _gameStrategy = new GameStrategy();
         DoComputerShot();
     }
 
+
     private void FireCommand(Cell cell)
     {
-        _gameStrategy.ShotAndSunkIfNeed((x: cell.X, y: cell.Y));
         if (!IsPlayerTurn || cell.State != PointStatus.Empty) return;
-        foreach (var point in Cells)
+        var shotResult = _gameStrategy.ProcessPlayerShot((x: cell.X, y: cell.Y));
+        foreach (var point in shotResult.AffectedPoints)
         {
-            if (_gameStrategy.Field.Field[point.X, point.Y] == PointStatus.Sunk ||
-                _gameStrategy.Field.Field[point.X, point.Y] == PointStatus.Miss)
-            {
-                point.State = _gameStrategy.Field.Field[point.X, point.Y];
-            }
-        }
-        
-        if (_gameStrategy.Field.Field[cell.X, cell.Y] == PointStatus.Empty)
-        {
-            _gameStrategy.Field.Field[cell.X, cell.Y] = PointStatus.Miss;
+            _cellsDictionary[(point.x, point.y)].State = _gameStrategy.ComputerField.Field[point.x, point.y];
         }
 
-        cell.State = _gameStrategy.Field.Field[cell.X, cell.Y];
-        if (cell.State != PointStatus.Sunk) IsPlayerTurn = false;
+        IsPlayerTurn = shotResult.Turn == PlayerShotResult.GameMembers.Player;
+        if (shotResult.GameIsFinished)
+        {
+            _isPlayerTurn = false;
+            _winner = shotResult.Winner;
+        }
+        else if (!IsPlayerTurn) DoComputerShot();
     }
 
     public void SendUserAction()
     {
-        IsPlayerTurn = true;
         PointStatus status;
         if (IsMiss) status = PointStatus.Miss;
         else status = IsSunk ? PointStatus.Sunk : PointStatus.Hit;
+        IsPlayerTurn = status == PointStatus.Miss;
         _gameStrategy.SetShotResult(status);
         DoComputerShot();
     }

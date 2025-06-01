@@ -1,58 +1,83 @@
+using System;
 using System.Collections.Generic;
 
 namespace BattleshipGame.Models;
 
 public class GameStrategy
 {
-    public BattleShipField Field;
-    private (int x, int y) _lastHit;
+    public BattleShipField ComputerField;
+    private (int x, int y) _lastShot, _lastHit;
     private bool _shootingAtShip;
     private BattleShipField _userField;
     
 
     public GameStrategy()
     {
-        Field = new BattleShipField();
+        ComputerField = new BattleShipField();
         _userField = new BattleShipField();
-        Logic.BoardOperations.LocateShipsOnBoard(Field);
+        Logic.BoardOperations.LocateShipsOnBoard(ComputerField);
     }
 
     public (int x, int y) GetShotCoordinates()
     {
         if (_shootingAtShip)
         {
-            _lastHit = GameUtils.GetPossibleShipPointsByPoint(_userField, _lastHit)[0];
+            var possiblePoints = GameUtils.GetPossibleShipPointsByPoint(_userField, _lastHit);
+            _lastShot = possiblePoints.Count > 0 ?
+                possiblePoints[Random.Shared.Next(possiblePoints.Count)]
+                : GameUtils.GetPlausibleShotCoordinates(_userField);
         } else
         {
-            _lastHit = GameUtils.GetPlausibleShotCoordinates(_userField);
+            _lastShot = GameUtils.GetPlausibleShotCoordinates(_userField);
         }
-        return _lastHit;
+        return _lastShot;
     }
 
     public void SetShotResult(PointStatus status) // Only Hit, Miss, Sunk
     {
-        if (status == PointStatus.Miss && _shootingAtShip) _shootingAtShip = false;
-        if (status == PointStatus.Hit) _shootingAtShip = true;
+        if (status == PointStatus.Hit)
+        {
+            _lastHit = _lastShot;
+            _shootingAtShip = true;
+        }
         else if (status == PointStatus.Sunk)
         {
-            Logic.ShipUtils.KillShip(_userField, _lastHit.x, _lastHit.y);
+            Logic.ShipUtils.KillShip(_userField, Logic.ShipUtils.GetShipPoints(
+                _userField, _lastShot.x, _lastShot.y, new HashSet<(int x, int y)>()));
             _shootingAtShip = false;
         }
-        _userField.Field[_lastHit.x, _lastHit.y] = status;
+        _userField.Field[_lastShot.x, _lastShot.y] = status;
     }
 
-    public void ShotAndSunkIfNeed((int x, int y) point)
+    public PlayerShotResult ProcessPlayerShot((int x, int y) point)
     {
-        if (Field.Field[point.x, point.y] == PointStatus.Ship)
+        var turn = PlayerShotResult.GameMembers.Computer;
+        HashSet<(int x, int y)> affectedPoints = [point];
+        if (ComputerField.Field[point.x, point.y] == PointStatus.Ship)
         {
-            
-            var shipPoints = Logic.ShipUtils.GetShipPoints(Field, point.x, point.y,
+            turn = PlayerShotResult.GameMembers.Player;
+            var shipPoints = Logic.ShipUtils.GetShipPoints(ComputerField, point.x, point.y,
                 new HashSet<(int x, int y)>());
-            Field.Field[point.x, point.y] = PointStatus.Hit;
-            if (shipPoints.FindAll(p => Field.Field[p.x, p.y] == PointStatus.Ship).Count == 0)
+            ComputerField.Field[point.x, point.y] = PointStatus.Hit;
+            if (shipPoints.FindAll(p => ComputerField.Field[p.x, p.y] == PointStatus.Ship).Count == 0)
             {
-                Logic.ShipUtils.KillShip(Field, point.x, point.y);
+                affectedPoints = Logic.ShipUtils.KillShip(ComputerField, shipPoints);
             }
         }
+        else if (ComputerField.Field[point.x, point.y] == PointStatus.Empty)
+        {
+            ComputerField.Field[point.x, point.y] = PointStatus.Miss;
+        }
+
+        PlayerShotResult.GameMembers? winner = null;
+        if (_userField.GameIsFinished()) winner = PlayerShotResult.GameMembers.Computer;
+        else if (ComputerField.GameIsFinished()) winner = PlayerShotResult.GameMembers.Player;
+        return new PlayerShotResult()
+        {
+            AffectedPoints = affectedPoints,
+            Winner = winner,
+            GameIsFinished = winner != null,
+            Turn = turn
+        };
     }
 }
