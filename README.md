@@ -73,5 +73,5 @@
    ```
 3. Запустите приложение:
    ```bash
-   dotnet run  -c Release
+   dotnet run -c Release
    ```
